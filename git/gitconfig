@@ -16,3 +16,5 @@
 [merge]
         tool = opendiff
         summary = true
+[branch]
+	autosetupmerge = true
