@@ -20,3 +20,5 @@
   outgoing = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s%n' --decorate origin/$(git current-branch..)"
 [merge]
   tool = meld
+[branch]
+	autosetupmerge = true
