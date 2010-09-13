@@ -1,18 +1,22 @@
 [user]
 	name = Dave Harris
 	email = dave@nzmac.com
+[core]
+	pager = less -x2
 [color]
-        diff = auto
-        status = auto
-        branch = auto
-        interactive = auto
-        ui = auto
+  diff = auto
+  status = auto
+  branch = auto
+  interactive = auto
+  ui = auto
 [alias]
-        st = status
-        ci = commit
-        co = checkout
-        br = branch
-        lol = "log --pretty=oneline --abbrev-commit --graph --decorate"
+  st = status
+  ci = commit
+  co = checkout
+  br = branch
+  lol = "log --pretty=oneline --abbrev-commit --graph --decorate"
+  current-branch = "!echo $(git branch --no-color 2> /dev/null | grep \"*\" | cut -d \" \" -f 2)"
+  incoming = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s%n' --decorate ..origin/$(git current-branch)"
+  outgoing = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s%n' --decorate origin/$(git current-branch..)"
 [merge]
-        tool = opendiff
-        summary = true
+  tool = meld
