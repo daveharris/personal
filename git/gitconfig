@@ -2,23 +2,37 @@
 	name = Dave Harris
 	email = dave@nzmac.com
 [core]
-	pager = less -x2
+	pager = less -x4
+	editor = vim
 [color]
-  diff = auto
-  status = auto
-  branch = auto
-  interactive = auto
-  ui = auto
+	diff = auto
+	status = auto
+	branch = auto
+	interactive = auto
+	ui = auto
 [alias]
-  st = status
-  ci = commit
-  co = checkout
-  br = branch
-  lol = "log --pretty=oneline --abbrev-commit --graph --decorate"
-  current-branch = "!echo $(git branch --no-color 2> /dev/null | grep \"*\" | cut -d \" \" -f 2)"
-  incoming = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s%n' --decorate ..origin/$(git current-branch)"
-  outgoing = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s%n' --decorate origin/$(git current-branch..)"
+	st = status
+	ci = commit
+	co = checkout
+	br = branch
+	branches = branch
+	lol = "log --pretty=oneline --abbrev-commit --graph --decorate"
+	stat = "log -n 1 --stat"
+	current-branch = "!echo $(git branch --no-color 2> /dev/null | grep \"*\" | cut -d \" \" -f 2)"
+	incoming = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s' --decorate ..origin/$(git current-branch) && echo \"\n\""
+	outgoing = "!git fetch && git --no-pager log --format=format:'%C(yellow)%h : %C(red)%an : %C(green)%cr : %C(reset)%s' --decorate origin/$(git current-branch..) && echo \"\n\""
+	rm-orig = "!find . -type f -name *.orig -delete"
 [merge]
-  tool = meld
+	tool = meld
 [branch]
 	autosetupmerge = true
+[giggle]
+	main-window-maximized = true
+	main-window-geometry = 445x267+0+51
+	main-window-view = HistoryView
+	file-view-vpane-position = 634
+	file-view-hpane-position = 300
+	history-view-vpane-position = 614
+[gui]
+	fontui = -family droid -size 4 -weight bold -slant roman -underline 0 -overstrike 0
+	fontdiff = -family droid -size 4 -weight normal -slant roman -underline 0 -overstrike 0
