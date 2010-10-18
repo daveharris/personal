@@ -5,7 +5,7 @@
 EXPECTED_ARGS=3
 numargs=$#
 
-if [[ "$1" == *-* ]]
+if [[ "$1" == -* ]]
 then
   grep_args="$1"
   shift
@@ -13,8 +13,20 @@ then
 fi
 
 if [ $numargs -lt $EXPECTED_ARGS ]; then
-  echo "Usage: [grep_args] term path hosts..."
+  echo "Usage: dgrep.sh [grep_args] term path hosts..."
   exit
+fi
+
+# Add -r if not already present
+if [[ "$grep_args" != "-r" ]]
+then
+  grep_args="$grep_args -r"
+fi
+
+# Add -n if not already present
+if [[ "$grep_args" != "-n" ]]
+then
+  grep_args="$grep_args -n"
 fi
 
 term="$1"
@@ -30,5 +42,5 @@ echo "=== Results ==="
 for host in "$@"
 do
   ssh $host grep $grep_args \"$term\" \"$path\"
-  #echo ssh $host grep \'$grep_args \"$term\" \"$path\"\'
+  #echo ssh $host grep $grep_args \'\"$term\" \"$path\"\'
 done
