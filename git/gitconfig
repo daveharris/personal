@@ -1,6 +1,6 @@
 [user]
 	name = Dave Harris
-	email = dave@nzmac.com
+	email = dave@harris.org.nz
 [core]
 	pager = less -x4
 	editor = vim
