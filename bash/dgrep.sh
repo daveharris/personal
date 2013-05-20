@@ -37,10 +37,10 @@ shift
 shift
 
 echo "Grepping for [$term] in [$path] on [$@]"
-echo "=== Results ==="
 
 for host in "$@"
 do
+  echo "=== Results from $host ==="
   ssh $host grep $grep_args \"$term\" \"$path\"
   #echo ssh $host grep $grep_args \'\"$term\" \"$path\"\'
 done
