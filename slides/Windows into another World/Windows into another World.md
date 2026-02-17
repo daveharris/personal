@@ -4,13 +4,17 @@ theme: uncover
 class: invert
 ---
 
-<!-- _class: lead -->
-
+## &nbsp;
+#### &nbsp;
 # Windows into another World
-###### PostgreSQL offers many powerful ways to slice and dice data that most Rails apps ignore. This talk cracks open the window into thinking about data in aggregate in the name of faster UIs.
+> PostgreSQL offers many powerful ways to slice and dice data that most Rails apps ignore. This talk cracks open the window into thinking about data in aggregate in the name of faster UIs.
 
-Dave Harris, OrderlyMeds
-Feb 2026
+<div class="credit">
+  <span>Dave Harris</span>
+  <img src="om-logo-h-light.svg">
+</div>
+
+![bg cover](r-mo-w-_iZqdviAo-unsplash.jpg)
 
 ---
 <!-- paginate: true -->
@@ -25,11 +29,11 @@ Feb 2026
 ---
 
 ## ActiveRecord::Summarize
-#### Make existing groups of related ActiveRecord calculations twice as fast (or more) with minimal code alteration. It's like a _go_faster_ block.
+> Make existing groups of related ActiveRecord calculations twice as fast (or more) with minimal code alteration. It's like a _go_faster_ block.
 
 ---
 
-## ActiveRecord::Summarize
+## Dashboard Queries
 
 ```rb
 @user_count = User.kept.count
@@ -147,7 +151,7 @@ GROUP BY sign_in_count
 
 - Queries must be structurally compatible, i.e. `relation.or(other)`
 - `MIN` / `MAX` only works per group, or else multiple queries
-- Test with `summarize(noop: true)`
+- A/B test with `summarize(noop: true)`
 - TIL
   - `GROUP BY 1` means "group by the first column"
 
@@ -155,7 +159,7 @@ GROUP BY sign_in_count
 
 ## DISTINCT ON
 
-Returns the first row per group, according to specified order
+> Returns the first row per group, according to specified order
 
 It’s basically, `GROUP BY` but without aggregation powered by sorting
 
@@ -174,7 +178,7 @@ Comment
 
 ---
 
-## DISTINCT ON
+## DISTINCT ON - Structure
 
 ```sql
 SELECT DISTINCT ON (user_id)
@@ -200,7 +204,7 @@ ORDER BY comments.user_id ASC,
 
 ---
 
-## Window Functions
+## Window Functions - Structure
 
 Performs a calculation across a set of rows (aka window)
 
@@ -217,7 +221,7 @@ ROW_NUMBER() OVER (
 
 ---
 
-## Window Functions
+## Window Functions - Functions
 
 - `ROW_NUMBER()` → Unique row index
 - `RANK()` → Olympic ranking (gaps)
@@ -255,7 +259,7 @@ Display the "primary" image for each Appointment
 
 ---
 
-## Primary Image
+## Primary Image - Rails
 
 ```rb
 class Appointment < ApplicationRecord
@@ -269,7 +273,7 @@ end
 
 ---
 
-## Primary Image
+## Primary Image - Rails
 
 ```rb
 image_id_subquery = Appointment
@@ -281,7 +285,7 @@ image_id_subquery = Appointment
 
 ---
 
-## Primary Image
+## Primary Image - Rails
 
 ```rb
 partition_by = 'images.appointment_id'
@@ -296,7 +300,7 @@ Image
 
 ---
 
-## Primary Image
+## Primary Image - Rails
 
 ```rb
 scope :first_within, -> (partition_by:, order:) {
@@ -319,13 +323,13 @@ scope :first_within, -> (partition_by:, order:) {
 
 ---
 
-## Primary Image
+## Primary Image - Final result
 
-| id  | appointment_id | image_data            | frequency |
-|:---:|:--------------:|:---------------------:|:---------:|
-| 157 | 256            | {"id": "clients/9/a…  | 2         |
-| 216 | 329            | {"id": "clients/9/a…  | 1         |
-| 337 | 344            | {"id": "clients/9/a…  | 3         |
+| id  | appointment_id | image_data   | frequency |
+|:---:|:--------------:|:------------:|:---------:|
+| 157 | 256            | {"id": "...} | 2         |
+| 216 | 329            | {"id": "...} | 1         |
+| 337 | 344            | {"id": "...} | 3         |
 
 
 <style>
@@ -338,17 +342,33 @@ section > :not(h1, h2, h3, h4, h5, h6) {
   text-align: left;
 }
 
-pre > code {
-  font-size: 1.8em;
+section > .credit {
+  display: flex;
+  justify-content: center;
 }
 
-table {
-  font-family: monospace;
+.credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.credit img {
+  height: 48px;
+}
+
+pre > code {
+  font-size: 1.8em;
 }
 
 table, th, td {
   border: 1px solid white;
   border-collapse: collapse;
+}
+
+td {
+  font-family: monospace;
 }
 
 .columns {
