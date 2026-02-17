@@ -15,12 +15,12 @@ Feb 2026
 ---
 <!-- paginate: true -->
 
+
 ## What we'll cover
 
-* ActiveRecord::Summarize
-* <pre>SELECT DISTINCT ON (...)</pre>
-* Window functions
-* Bonus features
+- ActiveRecord::Summarize
+- <pre>SELECT DISTINCT ON (...)</pre>
+- Window functions
 
 ---
 
@@ -145,11 +145,11 @@ GROUP BY sign_in_count
 
 ## ActiveRecord::Summarize Gotchas
 
-* Queries must be structurally compatible, i.e. `relation.or(other)`
-* `MIN` / `MAX` only works per group, or else multiple queries
-* Test with `summarize(noop: true)`
-* TIL
-  * `GROUP BY 1` means "group by the first column"
+- Queries must be structurally compatible, i.e. `relation.or(other)`
+- `MIN` / `MAX` only works per group, or else multiple queries
+- Test with `summarize(noop: true)`
+- TIL
+  - `GROUP BY 1` means "group by the first column"
 
 ---
 
@@ -189,14 +189,14 @@ ORDER BY comments.user_id ASC,
 ## DISTINCT ON
 
 **Pros:**
-* No `GROUP BY`, so returns full rows (`table.*`)
-* Very fast with correct indexes
+- No `GROUP BY`, so returns full rows (`table.*`)
+- Very fast with correct indexes
 
 **Cons:**
-* PostgreSQL-only extension
-* The column(s) from `DISTINCT ON (...)` must match the first expression(s) in  `ORDER BY (...)`
-* Slow with complex joins
-* Can't do multiple rows per group ... 🤔
+- PostgreSQL-only extension
+- The column(s) from `DISTINCT ON (...)` must match the first expression(s) in `ORDER BY (...)`
+- Slow with complex joins
+- Can't do multiple rows per group ... 🤔
 
 ---
 
@@ -211,33 +211,51 @@ ROW_NUMBER() OVER (
 )
 ```
 
-* `ROW_NUMBER()` function
-* `PARTITION BY` defines the grouping
-* `ORDER BY` defines the order _within_ the partition
+- `ROW_NUMBER()` function
+- `PARTITION BY` defines the grouping
+- `ORDER BY` defines the order _within_ the partition
 
 ---
 
 ## Window Functions
 
-* `ROW_NUMBER()` → Unique row index
-* `RANK()` → Olympic ranking (gaps)
-* `DENSE_RANK()` → No gaps
-* `PERCENT_RANK()` → Relative rank between 0 and 1
-* `FIRST_VALUE()` → First value in window
-* `COUNT(...)`, `SUM(...)`, `MAX(...)` etc
+- `ROW_NUMBER()` → Unique row index
+- `RANK()` → Olympic ranking (gaps)
+- `DENSE_RANK()` → No gaps
+- `PERCENT_RANK()` → Relative rank between 0 and 1
+- `FIRST_VALUE()` → First value in partition
+- `COUNT(...)`, `SUM(...)`, `MAX(...)` etc
 
 ---
 
-## Window Functions
+```sql
+PARTITION BY child_id ORDER BY created_at
+```
+
+| id | child_id | created_at | row_n | rank | dense_r |
+|:--:|:--------:|:----------:|:-----:|:-----|:-------:|
+| 1  | 10       | :00        | 1     | 1    | 1       |
+| 2  | 11       | :00        | 1     | 1    | 1       |
+| 3  | 11       | :00        | 2     | 1    | 1       |
+| 4  | 11       | :05        | 3     | 3    | 2       |
+
+---
+
+## Primary Image
 
 Display the "primary" image for each Appointment
-* Latest image
-* Not locked, unless ... all are locked
-* Not video, hidden, soft-deleted
+- Latest image
+- Not locked, unless ... all are locked
+- Not video, hidden or soft-deleted
+- Also, get the image count at the same time 😎
 
 ---
 
-## Window Functions
+![bg contain](pop-ins.png)
+
+---
+
+## Primary Image
 
 ```rb
 class Appointment < ApplicationRecord
@@ -248,6 +266,67 @@ class Image < ApplicationRecord
   belongs_to :appointment
 end
 ```
+
+---
+
+## Primary Image
+
+```rb
+image_id_subquery = Appointment
+  .select('images.id')
+  .joins(:images)
+  .merge(Image.kept.not_video.not_hidden)
+  .merge(Appointment.emailed)
+```
+
+---
+
+## Primary Image
+
+```rb
+partition_by = 'images.appointment_id'
+order = "
+ ((images.image_data -> 'derivatives' ? 'locked') IS FALSE) DESC,
+ images.id DESC"
+
+Image
+  .where(id: image_id_subquery)
+  .first_within(partition_by:, order:)
+```
+
+---
+
+## Primary Image
+
+```rb
+scope :first_within, -> (partition_by:, order:) {
+  derived = select(
+    "DISTINCT ON (#{partition_by}) #{table_name}.id",
+    "COUNT(*) OVER (PARTITION BY #{partition_by}) AS frequency"
+  ).order(partition_by, Arel.sql(order))
+
+  select("#{table_name}.*, derived.frequency")
+    .joins(
+      "INNER JOIN (#{derived.to_sql}) AS derived ON #{table_name}.id = derived.id"
+    )
+}
+```
+<!--
+- DISTINCT ON to get a single row per ORDER
+- Window function for the count
+- Join required to access table fields and frequency in a single DB query
+-->
+
+---
+
+## Primary Image
+
+| id  | appointment_id | image_data            | frequency |
+|:---:|:--------------:|:---------------------:|:---------:|
+| 157 | 256            | {"id": "clients/9/a…  | 2         |
+| 216 | 329            | {"id": "clients/9/a…  | 1         |
+| 337 | 344            | {"id": "clients/9/a…  | 3         |
+
 
 <style>
 
@@ -261,6 +340,10 @@ section > :not(h1, h2, h3, h4, h5, h6) {
 
 pre > code {
   font-size: 1.8em;
+}
+
+table {
+  font-family: monospace;
 }
 
 .columns {
