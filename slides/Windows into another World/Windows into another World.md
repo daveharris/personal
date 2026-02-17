@@ -219,19 +219,12 @@ ROW_NUMBER() OVER (
 
 ## Window Functions
 
-**Ranking**
-* `ROW_NUMBER()`
-* `RANK()`
-* `DENSE_RANK()`
-
-**Aggregate**
-* `COUNT()`
-* `SUM()`
-* `MAX()`
-
-**Navigation**
-* `LAG()`
-* `LEAD()`
+* `ROW_NUMBER()` → Unique row index
+* `RANK()` → Olympic ranking (gaps)
+* `DENSE_RANK()` → No gaps
+* `PERCENT_RANK()` → Relative rank between 0 and 1
+* `FIRST_VALUE()` → First value in window
+* `COUNT(...)`, `SUM(...)`, `MAX(...)` etc
 
 ---
 
@@ -268,6 +261,15 @@ section > :not(h1, h2, h3, h4, h5, h6) {
 
 pre > code {
   font-size: 1.8em;
+}
+
+.columns {
+  display: flex;
+  gap: 2rem;
+}
+
+.column {
+  flex: 1;
 }
 
 </style>
