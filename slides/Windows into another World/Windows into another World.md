@@ -346,6 +346,11 @@ table {
   font-family: monospace;
 }
 
+table, th, td {
+  border: 1px solid white;
+  border-collapse: collapse;
+}
+
 .columns {
   display: flex;
   gap: 2rem;
