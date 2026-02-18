@@ -22,9 +22,9 @@ class: invert
 
 ## What we'll cover
 
-- ActiveRecord::Summarize
-- <pre>SELECT DISTINCT ON (...)</pre>
-- Window functions
+1. ActiveRecord::Summarize
+2. <pre>SELECT DISTINCT ON (...)</pre>
+3. Window functions
 
 ---
 
@@ -87,7 +87,9 @@ end
 ```
 
 <!--
-...and you'll have exactly the same instance variables set, but only one SQL query will have been executed.
+- you'll have exactly the same instance variables set, but only one SQL query will have been executed.
+- Queries must be structurally compatible, i.e. `.or(...)`
+- A/B test with `summarize(noop: true)`
 -->
 
 ---
@@ -118,7 +120,7 @@ COUNT(expr) counts all non-NULL values of expr
 
 ---
 
-## ActiveRecord::Summarize Groups
+## ActiveRecord::Summarize - Groups
 
 ```rb
 User.kept.summarize do |scope|
@@ -133,7 +135,7 @@ end
 
 ---
 
-## ActiveRecord::Summarize Groups
+## ActiveRecord::Summarize - Groups
 
 ```sql
 SELECT
@@ -149,11 +151,9 @@ GROUP BY sign_in_count
 
 ## ActiveRecord::Summarize Gotchas
 
-- Queries must be structurally compatible, i.e. `relation.or(other)`
+- Queries must be structurally compatible, i.e. `.or(...)`
 - `MIN` / `MAX` only works per group, or else multiple queries
-- A/B test with `summarize(noop: true)`
-- TIL
-  - `GROUP BY 1` means "group by the first column"
+* But sometimes we need one __full__ row per group ... 🤔
 
 ---
 
@@ -190,7 +190,7 @@ ORDER BY comments.user_id ASC,
 
 ---
 
-## DISTINCT ON
+## DISTINCT ON Gotchas
 
 **Pros:**
 - No `GROUP BY`, so returns full rows (`table.*`)
@@ -200,7 +200,7 @@ ORDER BY comments.user_id ASC,
 - PostgreSQL-only extension
 - The column(s) from `DISTINCT ON (...)` must match the first expression(s) in `ORDER BY (...)`
 - Slow with complex joins
-- Can't do multiple rows per group ... 🤔
+* Can't do multiple rows per group ... 🤔
 
 ---
 
@@ -319,6 +319,7 @@ scope :first_within, -> (partition_by:, order:) {
 - DISTINCT ON to get a single row per ORDER
 - Window function for the count
 - Join required to access table fields and frequency in a single DB query
+- Query to 8ms to run in production with 1,043,718 Images scoped to a single client (with 500 Images)
 -->
 
 ---
@@ -331,6 +332,14 @@ scope :first_within, -> (partition_by:, order:) {
 | 216 | 329            | {"id": "...} | 1         |
 | 337 | 344            | {"id": "...} | 3         |
 
+---
+
+## PostgreSQL Decision Guide
+
+* Multiple aggregates? → ActiveRecord::Summarize
+* One row per group? → `DISTINCT ON`
+* Ranking or count? → Window functions
+* One row per group _and_ a count? → __Combine them!__
 
 <style>
 
