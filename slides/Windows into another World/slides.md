@@ -91,9 +91,11 @@ end
 ```
 
 <!--
-- you'll have exactly the same instance variables set, but only one SQL query will have been executed.
-- Queries must be structurally compatible, i.e. `.or(...)`
-- A/B test with `summarize(noop: true)`
+* you'll have exactly the same instance variables set, but only one SQL query will have been executed.
+
+* Queries must be structurally compatible, i.e. `.or(...)`
+
+* A/B test with `summarize(noop: true)`
 -->
 
 ---
@@ -118,8 +120,9 @@ WHERE discarded_at IS NULL
 ```
 
 <!--
-returns NULL (because there is no ELSE)
-COUNT(expr) counts all non-NULL values of expr
+* returns NULL (because there is no ELSE)
+
+* COUNT(expr) counts all non-NULL values of expr
 -->
 
 ---
@@ -156,7 +159,7 @@ GROUP BY sign_in_count
 ## ActiveRecord::Summarize Gotchas
 
 - Queries must be structurally compatible, i.e. `.or(...)`
-- `MIN` / `MAX` only works per group, or else multiple queries
+- `MIN` / `MAX` only works per group
 * But sometimes we need one __full__ row per group ... 🤔
 
 ---
@@ -169,28 +172,43 @@ It’s basically, `GROUP BY` but without aggregation powered by sorting
 
 ---
 
-## DISTINCT ON
+## DISTINCT ON - Structure
+
+```sql
+SELECT DISTINCT ON (<column>) <columns>
+FROM <table>
+ORDER BY <column> [ASC|DESC]
+```
+<!--
+* The expression inside DISTINCT ON (...) MUST match the leftmost part of ORDER BY
+
+* ORDER BY determines which row is kept per group
+-->
+
+---
+
+## DISTINCT ON - Rails
 
 Most recent comment per user:
 ```rb
 Comment
   .select(
-    'DISTINCT ON (user_id) user_id, comments.*'
+    'DISTINCT ON (user_id) comments.*'
   )
   .order(:user_id, created_at: :desc)
 ```
-
 ---
 
-## DISTINCT ON - Structure
+## DISTINCT ON - Example
 
-```sql
-SELECT DISTINCT ON (user_id)
-  user_id, comments.*
-FROM comments
-ORDER BY comments.user_id ASC,
-  comments.created_at DESC
-```
+| id | user_id | created_at | body       | kept? |
+|:--:|:-------:|:----------:|:-----------|:-----:|
+| 1  | 10      | 10:00      | Oldest A   |       |
+| 2  | 10      | 10:05      | Newest A   | ✅    |
+| 3  | 11      | 11:00      | Oldest B   |       |
+| 4  | 11      | 11:02      | Mid B      |       |
+| 5  | 11      | 11:10      | Newest B   | ✅    |
+| 6  | 12      | 09:30      | Only C     | ✅    |
 
 ---
 
@@ -201,9 +219,8 @@ ORDER BY comments.user_id ASC,
 - Very fast with correct indexes
 
 **Cons:**
-- PostgreSQL-only extension
-- The column(s) from `DISTINCT ON (...)` must match the first expression(s) in `ORDER BY (...)`
-- Slow with complex joins
+- PostgreSQL-only
+- The column(s) from `DISTINCT ON (...)` __must__ match the first expression(s) in `ORDER BY (...)`
 * Can't do multiple rows per group ... 🤔
 
 ---
@@ -213,15 +230,21 @@ ORDER BY comments.user_id ASC,
 Performs a calculation across a set of rows (aka window)
 
 ```sql
-ROW_NUMBER() OVER (
-  PARTITION BY user_id
-  ORDER BY created_at DESC
-)
+SELECT
+  <function>() OVER (
+    PARTITION BY <column>
+    ORDER BY <column> [ASC|DESC]
+  )
+FROM <table>
 ```
 
-- `ROW_NUMBER()` function
-- `PARTITION BY` defines the grouping
-- `ORDER BY` defines the order _within_ the partition
+<!--
+* `ROW_NUMBER()` function
+
+* `PARTITION BY` defines the grouping
+
+* `ORDER BY` defines the order _within_ the partition
+-->
 
 ---
 
@@ -244,8 +267,16 @@ PARTITION BY child_id ORDER BY created_at
 |:--:|:--------:|:----------:|:-----:|:-----|:-------:|
 | 1  | 10       | :00        | 1     | 1    | 1       |
 | 2  | 11       | :00        | 1     | 1    | 1       |
-| 3  | 11       | :00        | 2     | 1    | 1       |
-| 4  | 11       | :05        | 3     | 3    | 2       |
+| 3  | 11       | :00        | 2     | 1 😬 | 1 😬     |
+| 4  | 11       | :05        | 3     | 3 💥 | 2 👈     |
+
+<!--
+* "ROW_NUMBER()" always increasing witin partiion
+
+* "RANK()" produces the same value if partition value the same, then jumps 1->3
+
+* "DENSE_RANK()" produces the same value if partition value the same, no jumps 1->2
+-->
 
 ---
 
@@ -280,11 +311,12 @@ end
 ## Primary Image - Rails
 
 ```rb
-image_id_subquery = Appointment
+image_ids = Appointment
   .select('images.id')
   .joins(:images)
   .merge(Image.kept.not_video.not_hidden)
   .merge(Appointment.emailed)
+  .where(customer_id: ...)
 ```
 
 ---
@@ -292,49 +324,79 @@ image_id_subquery = Appointment
 ## Primary Image - Rails
 
 ```rb
-partition_by = 'images.appointment_id'
 order = "
  ((images.image_data -> 'derivatives' ? 'locked') IS FALSE) DESC,
  images.id DESC"
 
 Image
-  .where(id: image_id_subquery)
-  .first_within(partition_by:, order:)
+  .where(id: image_ids)
+  .first_within(order:)
 ```
+<!--
+* order for the locked status not a where
+
+* images.id DESC first image per Appointment
+-->
 
 ---
 
 ## Primary Image - Rails
 
 ```rb
-scope :first_within, -> (partition_by:, order:) {
+scope :first_within, -> (order:) {
   derived = select(
-    "DISTINCT ON (#{partition_by}) #{table_name}.id",
-    "COUNT(*) OVER (PARTITION BY #{partition_by}) AS frequency"
-  ).order(partition_by, Arel.sql(order))
+    "DISTINCT ON (images.appointment_id) images.id",
+    "COUNT(*) OVER (PARTITION BY images.appointment_id) AS frequency"
+  ).order(images.appointment_id, order)
 
-  select("#{table_name}.*, derived.frequency")
-    .joins(
-      "INNER JOIN (#{derived.to_sql}) AS derived ON #{table_name}.id = derived.id"
-    )
-}
+  ...
 ```
 <!--
-- DISTINCT ON to get a single row per ORDER
-- Window function for the count
-- Join required to access table fields and frequency in a single DB query
-- Query to 8ms to run in production with 1,043,718 Images scoped to a single client (with 500 Images)
+* DISTINCT ON to get a single row per ORDER
+
+* Window function for the count
 -->
 
 ---
 
-## Primary Image - Final result
+## Primary Image - Rails
 
-| id  | appointment_id | image_data   | frequency |
-|:---:|:--------------:|:------------:|:---------:|
-| 157 | 256            | {"id": "...} | 2         |
-| 216 | 329            | {"id": "...} | 1         |
-| 337 | 344            | {"id": "...} | 3         |
+```rb
+ ...
+
+ select("images.*, derived.frequency")
+  .joins(
+    "INNER JOIN (#{derived.to_sql}) AS derived
+    ON images.id = derived.id"
+  )
+}
+```
+<!--
+* Join required to access table fields and frequency in a single DB query due to execution order
+
+* Query in 8ms in production with 1M+ Images when scoped to a single client (with 500 Images)
+-->
+
+---
+
+## Primary Image - Final result 🎊
+
+| id  | appointment_id | image_data | ... | frequency |
+|:---:|:--------------:|:----------:|:---:|:---------:|
+| 157 | 256            | {...}      | ... | 2         |
+| 216 | 329            | {...}      | ... | 1         |
+| 337 | 344            | {...}      | ... | 3         |
+
+```rb
+appointment.primary_image.image_url(:index)
+=> "http://s3.ap-southeast-2.amazonaws.com/..."
+```
+
+<!--
+* Full Image row, i.e. #image_url
+
+* How to get #primary_image on Appointment instance, `ActiveRecord::Base.extend PrimaryImageable::QueryMethods`
+-->
 
 ---
 
