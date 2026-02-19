@@ -14,7 +14,7 @@ class: invert
   <img src="om-logo-h-light.svg">
 </div>
 
-![bg cover](r-mo-w-_iZqdviAo-unsplash.jpg)
+![bg cover](windows.jpg)
 
 ---
 <!-- paginate: true -->
@@ -22,14 +22,18 @@ class: invert
 
 ## What we'll cover
 
-1. ActiveRecord::Summarize
-2. <pre>SELECT DISTINCT ON (...)</pre>
-3. Window functions
+1) ActiveRecord::Summarize
+2) <pre>SELECT DISTINCT ON (...)</pre>
+3) Window functions
 
 ---
 
 ## ActiveRecord::Summarize
 > Make existing groups of related ActiveRecord calculations twice as fast (or more) with minimal code alteration. It's like a _go_faster_ block.
+
+---
+
+![bg contain](dashboard.png)
 
 ---
 
